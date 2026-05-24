@@ -46,7 +46,8 @@ class User(Base):
 
 class GuideSleep(Base):
     __tablename__ = "guidesleep"
-
+    share_count = Column(Integer, default=0)
+    original_post_id = Column(Integer, nullable=True)
     id = Column(Integer, primary_key=True, index=True)
     category = Column(String(100), nullable=False)
     note = Column(Text, nullable=True)
