@@ -44,7 +44,7 @@ export default function PostSleepScreen() {
     const found = categories.find(c => c.key === key);
     return found?.title || 'ไม่ทราบหมวด';
   };
-
+  
   return (
     <View style={styles.container}>
       <Text style={styles.header}>โพสต์แนะนำการนอน</Text>
