@@ -1,4 +1,7 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// app/_layout.tsx
+import * as React from 'react';
+// 1. เปลี่ยนจาก NavigationContainer เป็น ThemeProvider
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'; 
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -16,8 +19,11 @@ export default function RootLayout() {
     return null;
   }
 
+  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    // 2. ใช้ ThemeProvider และเปลี่ยน props จาก theme={...} เป็น value={...}
+    <ThemeProvider value={theme}> 
       <Stack initialRouteName="index">
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
