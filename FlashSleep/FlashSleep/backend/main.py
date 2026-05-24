@@ -32,7 +32,11 @@ from schemas import (
 )
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-
+import json
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+from models import User, QuestProgress # อิมพอร์ตให้ตรงกับโค้ดของคุณ
+from database import get_db # อิมพอร์ตให้ตรงกับโค้ดของคุณ
 # ---------------------------
 # Basic logging
 # ---------------------------
@@ -451,6 +455,8 @@ def get_guidesleep(request: Request, db: Session = Depends(get_db)):
                     "image_url": user.image_url if user else None,
                     "score": score,
                     "user_vote": user_vote,
+                    "share_count": post.share_count, # 🟢 เพิ่มบรรทัดนี้ครับ!
+                    "original_post_id": post.original_post_id, # 🟢 เพิ่มอันนี้ด้วยถ้าต้องการใช้ระบบแชร์
                 }
             )
     return result
@@ -3135,3 +3141,63 @@ async def debug_guidesleep_inspect(
 
     # return what server saw (for debugging only)
     return {"raw_text": raw_text[:2000], "parsed": parsed, "headers": {"content-type": headers.get("content-type"), "authorization": headers.get("authorization")}}
+
+
+import json # อย่าลืม import json ไว้ด้านบนสุดของไฟล์ด้วยนะครับถ้ายังไม่มี
+
+@app.get("/leaderboard")
+def get_leaderboard(db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    leaderboard = []
+    
+    for user in users:
+        total_score = 0
+        progresses = db.query(QuestProgress).filter(QuestProgress.user_id == user.id).all()
+        
+        for prog in progresses:
+            if prog.data: 
+                try:
+                    # เช็กเผื่อว่า data ถูกแปลงเป็น dict มาแล้วหรือยังเป็น string อยู่
+                    data_dict = json.loads(prog.data) if isinstance(prog.data, str) else prog.data
+                    
+                    # 💡 จุดที่แก้: ต้องดึงก้อน "items" ออกมาก่อน
+                    items = data_dict.get("items", {})
+                    
+                    # วนลูปช่วงเวลา morning, afternoon, evening
+                    for period, tasks in items.items():
+                        if isinstance(tasks, list):
+                            for task in tasks:
+                                # หากต้องการทดสอบ ลองเปลี่ยน "completed" เป็น "in_progress" ดูก่อนได้ครับ
+                                if task.get("status") == "completed":
+                                    total_score += int(task.get("score", 0))
+                except Exception as e:
+                    print(f"Error parsing progress ID {prog.id}: {e}") # ปริ้นบอกด้วยว่าพังที่บรรทัดไหน
+                    continue
+                    
+        # 💡 เงื่อนไขนี้ทำให้คนคะแนน 0 ไม่ขึ้นกระดาน
+        if total_score > 0:
+            leaderboard.append({
+                "user_id": user.id,
+                "name": f"{user.first_name} {user.last_name}",
+                "total_score": total_score
+            })
+            
+    leaderboard.sort(key=lambda x: x["total_score"], reverse=True)
+    return leaderboard[:10]
+
+# main.py
+@app.patch("/guidesleep/{post_id}/share")
+def increase_share_count(post_id: int, db: Session = Depends(get_db)):
+    post = db.query(GuideSleep).filter(GuideSleep.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    try:
+        if post.share_count is None:
+            post.share_count = 0
+        post.share_count += 1
+        db.commit()
+        db.refresh(post) # 🟢 เพิ่มบรรทัดนี้ เพื่อดึงค่าที่เพิ่งบวกเสร็จออกมา
+        return {"share_count": post.share_count, "status": "success"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
