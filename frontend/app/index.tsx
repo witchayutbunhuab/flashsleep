@@ -1,158 +1,192 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
-import { useEffect, useState } from "react";
+// app/index.tsx
+import React, { useState } from 'react';
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-} from "react-native";
+  SafeAreaView,
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Image,
+} from 'react-native';
+import { DarkTheme, DefaultTheme } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
+import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { useRouter } from 'expo-router';
 
-const sleepOptions = [
-  "แนะนำหลับเร็ว",
-  "ตื่นนอนให้สดชื่น",
-  "กำหนดที่เหมาะสม",
-  "ช่วยนอนหลับ",
-];
+import GuidesleepTabs from './(sleep)/indexx';
 
-export default function AddGuideSleepScreen() {
-  const [selectedOption, setSelectedOption] = useState("");
-  const [note, setNote] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [sleepTime, setSleepTime] = useState("");
-  const [wakeTime, setWakeTime] = useState("");
-  const [token, setToken] = useState("");
-  const [userId, setUserId] = useState("");
+export default function IndexScreen() { 
+  const colorScheme = useColorScheme();
+  const [loaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  });
+  const router = useRouter();
 
-  useEffect(() => {
-    const loadAuth = async () => {
-      const storedToken = await AsyncStorage.getItem("token");
-      const storedUserId = await AsyncStorage.getItem("user_id");
-      if (storedToken && storedUserId) {
-        setToken(storedToken);
-        setUserId(storedUserId);
-      }
-    };
-    loadAuth();
-  }, []);
+  // ถ้าต้องการปิดการกดภายในเนื้อหา ให้ตั้งเป็น true
+  // เปลี่ยนเป็น false เพื่อให้เนื้อหากดได้ตามปกติ
+  const contentDisabled = true;
 
-  const handleSubmit = async () => {
-    try {
-      await axios.post(
-        "http://192.168.1.2:8000/guidesleep", // ✅ ใช้ IP พิเศษของ Android Emulator
-        {
-          category: selectedOption,
-          note,
-          start_date: startDate,
-          end_date: endDate,
-          sleep_time: sleepTime,
-          wake_time: wakeTime,
-          user_id: userId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-      Alert.alert("เพิ่ม GuideSleep สำเร็จ");
-      setSelectedOption("");
-      setNote("");
-      setStartDate("");
-      setEndDate("");
-      setSleepTime("");
-      setWakeTime("");
-    } catch (error) {
-      console.error("โพสต์ล้มเหลว:", error);
-      Alert.alert("ไม่สามารถเพิ่ม GuideSleep ได้");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState<'login' | 'register' | null>(null);
+
+  if (!loaded) return null;
+
+  function openModal(type: 'login' | 'register') {
+    // นำทางตรงเมื่อกด (ตามที่ต้องการ)
+    if (type === 'login') {
+      router.replace('/login');
+    } else {
+      router.push('/register');
     }
-  };
+  }
+
+  function closeModal() {
+    setModalVisible(false);
+    setModalType(null);
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>เพิ่ม GuideSleep</Text>
+    // ถ้าต้องการใช้ theme ของ react-navigation ให้ห่อด้วย NavigationContainer/ThemeProvider ตามความเหมาะสม
+    <View style={{ flex: 1, backgroundColor: colorScheme === 'dark' ? DarkTheme.colors.background : DefaultTheme.colors.background }}>
+      <SafeAreaView style={styles.safe}>
+        {/* เนื้อหา: ถ้าต้องการปิดการกด ให้ตั้ง pointerEvents="none" */}
+        <View style={styles.content} pointerEvents={contentDisabled ? 'none' : 'auto'}>
+          <GuidesleepTabs />
+        </View>
 
-      {sleepOptions.map((option) => (
-        <TouchableOpacity
-          key={option}
-          style={[
-            styles.optionButton,
-            selectedOption === option && styles.optionSelected,
-          ]}
-          onPress={() => setSelectedOption(option)}
-        >
-          <Text style={styles.optionText}>{option}</Text>
-        </TouchableOpacity>
-      ))}
+        {/* Footer ปุ่มอยู่ด้านล่างเสมอ (ยังคงรับ touch ได้) */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.btn, styles.btnPrimary]}
+            onPress={() => openModal('login')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.btnText}>เข้าสู่ระบบ</Text>
+          </TouchableOpacity>
 
-      <TextInput
-        style={styles.input}
-        placeholder="บันทึกก่อนนอน..."
-        value={note}
-        onChangeText={setNote}
-        multiline
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="วันเริ่มบันทึก (2025-09-07)"
-        value={startDate}
-        onChangeText={setStartDate}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="วันไกด์ (2025-09-08)"
-        value={endDate}
-        onChangeText={setEndDate}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="เวลานอน (23:00)"
-        value={sleepTime}
-        onChangeText={setSleepTime}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="เวลาตื่น (07:00)"
-        value={wakeTime}
-        onChangeText={setWakeTime}
-      />
+          <TouchableOpacity
+            style={[styles.btn, styles.btnOutline]}
+            onPress={() => openModal('register')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.btnText, styles.btnOutlineText]}>สมัครสมาชิก</Text>
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-        <Text style={styles.submitText}>บันทึก</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <StatusBar style="auto" />
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: "#fff" },
-  header: { fontSize: 22, fontWeight: "bold", marginBottom: 15 },
-  optionButton: {
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: "#eee",
-    marginBottom: 10,
+  safe: { flex: 1, backgroundColor: '#fff' },
+
+  /* เนื้อหา */
+  content: { flex: 1 },
+
+  /* Footer (ปรับให้เล็กลง) */
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    backgroundColor: '#fff',
   },
-  optionSelected: {
-    backgroundColor: "#c0aaff",
+
+  /* ปุ่ม (เล็กลง) */
+  btn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    minHeight: 36,
   },
-  optionText: { fontSize: 16 },
-  input: {
+  btnPrimary: {
+    backgroundColor: '#007AFF',
+  },
+  btnOutline: {
+    backgroundColor: '#e2ee34',
     borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
+    borderColor: '#e2ee34',
   },
-  submitButton: {
-    backgroundColor: "#6a4cff",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
+  btnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
   },
-  submitText: { color: "#fff", fontSize: 16 },
+  btnOutlineText: {
+    color: '#ffffff',
+  },
+
+  /* Modal / logo styles */
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  modalCard: {
+    width: '90%',
+    maxWidth: 360,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 6,
+    zIndex: 10,
+  },
+  closeText: { fontSize: 16, color: '#666' },
+
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#333',
+  },
+  logo: {
+    width: 88,
+    height: 88,
+    marginBottom: 12,
+  },
+  buttonWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonContainer: {
+    marginVertical: 6,
+    width: '100%',
+  },
+  modalAction: {
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalPrimary: {
+    backgroundColor: '#007AFF',
+  },
+  modalOutline: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  modalActionText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalOutlineText: {
+    color: '#007AFF',
+  },
 });
