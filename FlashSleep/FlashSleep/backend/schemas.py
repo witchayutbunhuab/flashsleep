@@ -74,6 +74,10 @@ class GuideSleepOut(BaseModel):
     id: int
     category: str
     note: Optional[str]
+    share_count: int = 0  
+    original_post_id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     # Align with models: use datetime
     start_date: Optional[datetime]
     end_date: Optional[datetime]
